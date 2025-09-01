@@ -6,7 +6,7 @@ using Optim
 
 #Specify time for which the process will start and end:
 t_start = 0.0
-t_end = 100.0
+t_end = 150.0
 
 Random.seed!(42)
 mu  = 0.5
@@ -39,7 +39,7 @@ end
 p = Params(10, 0.5, 1, 5, 0.1)
 
 function xSP(t)
-    return 2 - 0.5 * (t > 20) + 1.2 * (t > 50)
+    return 2 + 0.5 * (t > 12) - 1.2 * (t > 60)
 end
 ;
 
@@ -97,7 +97,7 @@ function MPC_OF(uv, p)
     x0 = [initial_level, initial_F_in]
 
     problem = ODEProblem(MPC_ODE!, x0, [t_start, t_horizon], p.p) #End integration just before end of horizon to avoid issues with no interpolation at t= t_start + horizon
-    sol = solve(problem, Tsit5(), saveat = t)
+    sol = solve(problem, AutoTsit5(Rosenbrock23()), saveat = t)
 
     predictions = first.(sol.u)
 
@@ -208,8 +208,7 @@ function run_mpc(x_est, p, t, F_in, xSP, odesol)
     display(t)
     display("p")
     display(p)
-     for i = 2:Int(t[end]-p.H)
-        display(t[end]-p.H)
+     for i = 2:Int(t[end]-p.H + 1)
         display("i in loop")
         display(i)
         odesol = mpc_step!(x_est, p, t, F_in, xSP, i, odesol) #!!! I think its calling the previous ODEsol
@@ -225,6 +224,7 @@ plot(x_est[:,1], x_est[:,2], label = "h")
 plot!(x_est[:,1], x_est[:,3], label = "F_in")
 plot!(x_est[:,1], x_est[:,4], label = "fx")
 plot!(xSP)
+
 
 # # # #OPTION 2
 
