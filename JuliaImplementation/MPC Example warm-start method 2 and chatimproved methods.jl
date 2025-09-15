@@ -13,7 +13,7 @@ using OptimizationOptimJL
 
 #Specify time for which the process will start and end:
 t_start = 0.0
-t_end = 150.0
+t_end = 8.0
 
 
 #######
@@ -42,7 +42,7 @@ plot(F_in, xlab = "time (min)", ylab = "In Flow (m\$^3\$/min)")
 
 ########
 
-mutable struct Params
+mutable struct Params2
     A           #m^2, buffer tank cross-sectional area
     cv          #m^2.5/min, valve constant
     t_step      #min, time steps between controller actions
@@ -52,7 +52,7 @@ end
 
 # specify parameters for tank ODE and MPC together 
 
-p = Params(10, 0.5, 1, 5, 0.1)
+p = Params2(10, 0.5, 1, 5, 0.1)
 
 function xSP(t)
     return 2 + 0.5 * (t > 23) - 1.2 * (t > 60)
@@ -73,7 +73,7 @@ x_est_headings = ("time", "level", "F_in", "valve position")
 x_est = fill(NaN, length(t), 4)
 x_est[1, 2] = initial_level
 
-mutable struct Mpc_p
+mutable struct Mpc_p2
     p
     xSP
     x_est
@@ -149,7 +149,7 @@ function mpc_step!(x_est, p, t, F_in, xSP, i, uv)
     sp = xSP.(mpc_t)
 
     # Create MPC parameter struct for this iteration
-    mpc_p = Mpc_p(p, xSP, x_est, t, i, mpc_t, sp)
+    mpc_p = Mpc_p2(p, xSP, x_est, t, i, mpc_t, sp)
 
     #Optimization Method 1
     
@@ -158,10 +158,19 @@ function mpc_step!(x_est, p, t, F_in, xSP, i, uv)
     upper = fill(0.99, p.H)
 
     options = Optim.Options(g_tol = 1e-4, f_reltol = 1e-6, iterations = 100)
-    
+    display("uv_prev")
+    display(uv)
+    display("mpc_.x_setpoint")
+    display(mpc_p.sp)
+    display("mpc_t")
+    display("J before optimization")
+    display(MPC_OF(uv, mpc_p))
     # Solve MPC optimization problem using Optim
     res = optimize(u -> MPC_OF(u, mpc_p), lower, upper, uv, Fminbox(BFGS()), options; autodiff = :finite)
     best_uv = Optim.minimizer(res)
+    
+    display("checkJ")
+    display(MPC_OF(best_uv, mpc_p)) #test objective function
 
     # #Optimization method 2
     
